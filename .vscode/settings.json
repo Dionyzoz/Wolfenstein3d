@@ -6,7 +6,9 @@
         "*.partial": "mustache",
         "stdio.h": "c",
         "sdl.h": "c",
-        "time.h": "c"
+        "time.h": "c",
+        "math.h": "c",
+        "sdl_image.h": "c"
     },
     "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools"
 }

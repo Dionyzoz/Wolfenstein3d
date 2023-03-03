@@ -5,6 +5,9 @@
 #include <math.h>
 #include <sys/time.h>
 
+SDL_Texture* texture;
+SDL_Texture* background_texture;
+
 int init(SDL_Window **window, SDL_Renderer **renderer)
 {
     SDL_Init(SDL_INIT_VIDEO); // Initialize SDL2
@@ -34,6 +37,14 @@ int init(SDL_Window **window, SDL_Renderer **renderer)
     }
     return 0;
 }
+void loadTextures(SDL_Renderer * renderer){
+    SDL_Surface* image = IMG_Load("wall.png");
+    SDL_Surface* background = IMG_Load("background.jpg");
+    texture = SDL_CreateTextureFromSurface(renderer, image);
+    background_texture = SDL_CreateTextureFromSurface(renderer, background);
+    free(image);
+    free(background);
+}
 
 void drawgame(SDL_Renderer *renderer, Player *player)
 {
@@ -57,6 +68,7 @@ int gameloop(SDL_Window *window, SDL_Renderer *renderer)
     Player player = {210, 210, 0};
     player.i = xpos(player.x);
     player.j = xpos(player.y);
+    player.air = false;
 
     while (game_running)
     {
@@ -102,6 +114,8 @@ int main()
     if ((r = init(&window, &renderer)))
         return r;
 
+
+    loadTextures(renderer);
     gameloop(window, renderer);
 
     SDL_Quit();

@@ -2,11 +2,15 @@
 #include "main.h"
 #include <math.h>
 
+#define PI 3.14159265359
+#define TAO (2 * PI)
 #define SCREEN_DIST (((double)WIDTH) / 2.0) / tan(FOV / 2.0)
 
 extern int field[GAME_HEIGHT][GAME_WIDTH];
 
 int amount = 0;
+extern SDL_Texture *texture;
+extern SDL_Texture *background_texture;
 
 void drawPlayer(SDL_Renderer *renderer, Player *player)
 {
@@ -15,6 +19,57 @@ void drawPlayer(SDL_Renderer *renderer, Player *player)
     // checks direction
     double center_angle = player->angle;
     double current_bar = 0;
+    double half_fov_tan = tan(FOV / 2);
+    SDL_SetRenderDrawColor(renderer, FLOOR);
+    SDL_Rect bottom_half;
+    bottom_half.h = HEIGHT / 2;
+    bottom_half.y = HEIGHT / 2;
+    bottom_half.x = 0;
+    bottom_half.w = WIDTH;
+    SDL_RenderFillRect(renderer, &bottom_half);
+
+    // background
+    SDL_Rect background_portion_1;
+    SDL_Rect background_res;
+    background_res.x = 0;
+    background_res.h = HEIGHT / 2;
+    background_res.y = 0;
+    background_res.w = WIDTH;
+
+    background_portion_1.h = BACKGROUND_HEIGHT;
+    background_portion_1.y = 0;
+
+    int w = ((FOV) / TAO) * BACKGROUND_WIDTH;
+    const int W = w;
+
+    int x = ((TAO - player->angle) / TAO) * BACKGROUND_WIDTH;
+
+    int right_edge = x + w;
+
+    background_portion_1.x = x;
+    background_portion_1.w = w;
+
+    if (right_edge > BACKGROUND_WIDTH)
+    {
+        int second_w = right_edge % BACKGROUND_WIDTH;
+        w -= second_w;
+        double prop = ((double)w / (double)(w + second_w));
+        background_res.w = WIDTH * prop;
+        SDL_Rect background_res_2 = background_res;
+        int _w = WIDTH * (1 - prop);
+        background_res_2.x = background_res.w;
+        background_res_2.w = _w;
+
+        SDL_Rect background_portion_2 = background_portion_1;
+        background_portion_2.x = 0;
+        background_portion_2.w = second_w;
+
+        background_portion_1.w = w;
+
+        SDL_RenderCopy(renderer, background_texture, &background_portion_2, &background_res_2);
+    }
+    SDL_RenderCopy(renderer, background_texture, &background_portion_1, &background_res);
+
     for (double current_angle = center_angle + (FOV / 2); current_angle > (center_angle - FOV / 2); current_angle -= STEP, current_bar += BARSTEP)
     {
         int int_dx_to_intersection;
@@ -102,17 +157,37 @@ void drawPlayer(SDL_Renderer *renderer, Player *player)
         length_to_hor = fabs((1 / horizontal_sin) * total_dy);
 
         double length, x_end, y_end;
+        int offset;
         if (length_to_hor < length_to_vert)
         {
             length = length_to_hor;
             x_end = x_horizontal;
             y_end = y_horizontal;
+            int _x = x_end;
+            double frac = x_end - _x;
+            if (horizontal_sin > 0)
+            {
+                offset = (_x % diff_x);
+            }
+            else
+            {
+                offset = diff_x - (_x % diff_x);
+            }
         }
         else
         {
             length = length_to_vert;
             x_end = x_vertical;
-            y_end = y_horizontal;
+            y_end = y_vertical;
+            int _y = y_end;
+            if (vertical_cos > 0)
+            {
+                offset = (_y % diff_y);
+            }
+            else
+            {
+                offset = diff_y - (_y % diff_y);
+            }
         }
 
         if (DIMENSIONS == 2)
@@ -130,26 +205,18 @@ void drawPlayer(SDL_Renderer *renderer, Player *player)
             SDL_FRect bar;
             bar.x = current_bar;
             bar.w = BARSTEP;
-            double trigprop = fabs(cos(center_angle - current_angle) * length);
-            bar.h = ((SCREEN_DIST) / trigprop) * diff_x;
-            double x;
-            int color;
-            if (HEIGHT < bar.h)
-            {
-                color = 255;
-            }
-            else
-            {
-                color = 255 - pow((((HEIGHT) / bar.h) - 1), 1.6) ;
-            }
-            if (color < 0)
-            {
-                color = 0;
-            }
-            SDL_SetRenderDrawColor(renderer, color, color, color, 255);
-            bar.y = (HEIGHT - bar.h) / 2;
+            double length_from_eye = fabs(cos(center_angle - current_angle) * length);
+            bar.h = ((SCREEN_DIST) / length_from_eye) * diff_y;
+            bar.y = (((HEIGHT - bar.h)) / 2) + atan(player->airpos / length_from_eye) * 200;
+            SDL_Rect src;
+            src.x = offset * (1000 / diff_x);
+            src.h = 1000;
+            src.y = 0;
+            src.w = (1000 / diff_x) * (half_fov_tan * length_from_eye) / WIDTH;
+            // src.w = 1;
 
-            SDL_RenderFillRectF(renderer, &bar);
+            SDL_RenderCopyF(renderer, texture, &src, &bar);
+            // SDL_RenderFillRectF(renderer, &bar);
         }
     }
 }
@@ -175,7 +242,7 @@ void check_with_walls(double dx, double dy, Player *player)
 
 void player_update(const Uint8 *keys, Player *player, double delta_time)
 {
-    double speed = 100.0 * delta_time;
+    double speed = 200.0 * delta_time;
     double dy = 0.0;
     double dx = 0.0;
     if (keys[SDL_SCANCODE_W])
@@ -201,16 +268,49 @@ void player_update(const Uint8 *keys, Player *player, double delta_time)
 
     if (keys[SDL_SCANCODE_LEFT])
     {
-        player->angle += 1.5  * delta_time;
+        player->angle += 1.5 * delta_time;
     }
     if (keys[SDL_SCANCODE_RIGHT])
     {
         player->angle -= 1.5 * delta_time;
+    }
+
+    if (!player->air)
+    {
+        if (keys[SDL_SCANCODE_SPACE])
+        {
+            printf("hi");
+            player->air = true;
+            player->airpos = 0;
+            player->jump_time = 0;
+        }
+    }
+    // In air
+    else
+    {
+        player->jump_time += delta_time;
+        int airpos = (HEIGHT / 10) * sin(TAO * player->jump_time);
+        printf("%d", airpos);
+        if (airpos < 0)
+        {
+            player->airpos = 0;
+            player->jump_time = 0;
+            player->air = false;
+        }
+        else
+        {
+            player->airpos = airpos;
+        }
     }
     // Inverted y
     if (dy != 0.0 || dx != 0.0)
     {
         dy = -dy;
         check_with_walls(dx, dy, player);
+    }
+    player->angle = fmod(player->angle, TAO);
+    if (player->angle < 0)
+    {
+        player->angle = TAO - player->angle;
     }
 }

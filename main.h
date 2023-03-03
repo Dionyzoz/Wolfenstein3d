@@ -1,7 +1,7 @@
 #define GAME_HEIGHT 9
 #define GAME_WIDTH 13
-#define diff_x 80
-#define diff_y 80
+#define diff_x 160
+#define diff_y 160
 #define HEIGHT GAME_HEIGHT *diff_y
 #define WIDTH GAME_WIDTH *diff_x
 #define HALFWIDTH WIDTH / 2.0
@@ -16,3 +16,8 @@
 
 #define xpos(x) (int)((x) / diff_x)
 #define ypos(y) (int)((y) / diff_y)
+
+#define BACKGROUND_WIDTH 2560
+#define BACKGROUND_HEIGHT 1024
+
+#define FLOOR 137, 207, 240, 255
